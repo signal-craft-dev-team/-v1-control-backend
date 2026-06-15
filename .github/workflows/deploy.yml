@@ -8,6 +8,10 @@ env:
   IMAGE_NAME: ghcr.io/signal-craft-dev-team/202606-v1-control-backend
   CONTAINER: control-backend
   DOMAIN: https://v1.api.prod.control.signalcraft.kr
+  # DB 접속 정보 — 비밀(USER/PASSWORD)은 secret, 비민감 값은 리터럴
+  DB_HOST: 10.178.0.3      # DB VM 내부 IP (VPC 내부 경로). 내부 DNS 이름도 가능
+  DB_PORT: '5432'
+  DB_NAME: signalcraft
 
 jobs:
   # ─────────────────────────────────────────
@@ -57,10 +61,14 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DB_USER: ${{ secrets.V1_GCP_VM_DB_CBE_USER }}
+          DB_PASS: ${{ secrets.V1_GCP_VM_DB_CBE_PASSWORD }}
         with:
           host: ${{ secrets.V1_GCP_VM_PROD_CONTROL_HOST }}
           username: ${{ secrets.V1_GCP_VM_PROD_CONTROL_USER }}
           key: ${{ secrets.V1_GCP_VM_SSH_KEY }}
+          envs: DB_USER,DB_PASS      # secret을 원격 셸 env로 안전 전달(인라인 보간 X)
           script: |
             set -e
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
@@ -71,6 +79,8 @@ jobs:
             docker rm -f ${{ env.CONTAINER }} 2>/dev/null || true
             docker run -d --name ${{ env.CONTAINER }} --restart unless-stopped \
               -p 8000:8000 \
+              -e PGHOST=${{ env.DB_HOST }} -e PGPORT=${{ env.DB_PORT }} -e PGDATABASE=${{ env.DB_NAME }} \
+              -e PGUSER="$DB_USER" -e PGPASSWORD="$DB_PASS" \
               ${{ env.IMAGE_NAME }}:${{ github.ref_name }}
 
       - name: Smoke test (/health)
@@ -85,16 +95,24 @@ jobs:
       - name: Rollback on failure
         if: failure()
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DB_USER: ${{ secrets.V1_GCP_VM_DB_CBE_USER }}
+          DB_PASS: ${{ secrets.V1_GCP_VM_DB_CBE_PASSWORD }}
         with:
           host: ${{ secrets.V1_GCP_VM_PROD_CONTROL_HOST }}
           username: ${{ secrets.V1_GCP_VM_PROD_CONTROL_USER }}
           key: ${{ secrets.V1_GCP_VM_SSH_KEY }}
+          envs: DB_USER,DB_PASS
           script: |
             PREV=$(cat /tmp/control_prev_image)
             if [ -n "$PREV" ]; then
               echo "rolling back to $PREV"
               docker rm -f ${{ env.CONTAINER }} 2>/dev/null || true
-              docker run -d --name ${{ env.CONTAINER }} --restart unless-stopped -p 8000:8000 "$PREV"
+              docker run -d --name ${{ env.CONTAINER }} --restart unless-stopped \
+                -p 8000:8000 \
+                -e PGHOST=${{ env.DB_HOST }} -e PGPORT=${{ env.DB_PORT }} -e PGDATABASE=${{ env.DB_NAME }} \
+                -e PGUSER="$DB_USER" -e PGPASSWORD="$DB_PASS" \
+                "$PREV"
             else
               echo "no previous image (first deploy) — nothing to roll back"
             fi
