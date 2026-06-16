@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from signalcraft_models.mqtt import edge_cloud_topics as T
 # DB
-from app.db import close_pool, get_pool
+from app.database.db import close_pool, get_pool
 # MQTT
 from app.mqtt.router import Router
 from app.mqtt.service import serve
