@@ -10,6 +10,13 @@ import ssl
 
 import aiomqtt
 
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
+
 
 def make_client() -> aiomqtt.Client:
     return aiomqtt.Client(
