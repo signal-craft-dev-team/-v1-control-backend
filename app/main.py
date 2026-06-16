@@ -1,5 +1,6 @@
 import json
 import asyncio
+import urllib
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
@@ -7,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.db import close_pool, get_pool
 from app.mqtt_client import make_client
+from app.storage import generate_upload_url, RAW_BUCKET
 
 
 @asynccontextmanager
@@ -55,3 +57,19 @@ async def pub_sub_mqtt():
         return JSONResponse(json.loads(json.dumps("구독/발행 왕복 확인 완료 ✅", default=str)))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"MQTT error: {e!s}")
+
+@app.get("/test/get-presigned-url")
+async def get_presigned():
+    """Presigned 발급 테스트"""
+    obj = "_healthcheck/presigned-test.txt"
+    try:
+        url = generate_upload_url(obj, content_type="text/plain")
+        req = urllib.request.Request(
+            url, data=b"hello", method="PUT",
+            headers={"Content-Type": "text/plain"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            put_status = resp.status
+        return {"signed": True, "bucket": RAW_BUCKET, "object": obj, "put_status": put_status}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"presigned error: {e!s}")
