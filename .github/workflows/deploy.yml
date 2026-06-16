@@ -24,6 +24,10 @@ jobs:
     permissions:
       contents: read
       packages: write
+      
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+      
     steps:
       - uses: actions/checkout@v4
 
@@ -37,6 +41,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v6.15.0
         with:
           context: .
@@ -109,7 +114,7 @@ jobs:
           host: ${{ secrets.V1_GCP_VM_PROD_CONTROL_HOST }}
           username: ${{ secrets.V1_GCP_VM_PROD_CONTROL_USER }}
           key: ${{ secrets.V1_GCP_VM_SSH_KEY }}
-          envs: DB_USER,DB_PASS
+          envs: DB_USER,DB_PASS,MQTT_USER,MQTT_PASS
           script: |
             PREV=$(cat /tmp/control_prev_image)
             if [ -n "$PREV" ]; then
@@ -134,3 +139,71 @@ jobs:
           username: ${{ secrets.V1_GCP_VM_PROD_CONTROL_USER }}
           key: ${{ secrets.V1_GCP_VM_SSH_KEY }}
           script: docker image prune -f
+
+  # ─────────────────────────────────────────
+  # 3. Slack 알림
+  # ─────────────────────────────────────────
+  notify:
+    name: Slack Notification
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy]
+    if: always()
+
+    steps:
+      - name: Prepare message data
+        id: prep
+        env:
+          COMMIT_MSG_RAW: ${{ github.event.head_commit.message }}
+          DIGEST: ${{ needs.build-and-push.outputs.digest }}
+        run: |
+          COMMIT_MSG=$(printf '%s' "$COMMIT_MSG_RAW" | head -1 | sed 's/"/\\"/g')
+          echo "commit_msg=$COMMIT_MSG" >> "$GITHUB_OUTPUT"
+          echo "short_digest=${DIGEST#sha256:}" >> "$GITHUB_OUTPUT"
+
+      - name: Send Slack message
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "${{ needs.deploy.result == 'success' && '✅ 배포 성공' || '❌ 배포 실패' }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ needs.deploy.result == 'success' && ':white_check_mark: *배포 성공*' || ':x: *배포 실패*' }}\n*서비스:* control-backend\n*브랜치:* `${{ github.ref_name }}`\n*작업자:* ${{ github.actor }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*커밋 메시지*\n${{ steps.prep.outputs.commit_msg }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*커밋 SHA*\n<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|`${{ github.sha }}`>"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*이미지 SHA*\n`${{ steps.prep.outputs.short_digest }}`"
+                    }
+                  ]
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": { "type": "plain_text", "text": "워크플로우 보기" },
+                      "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
