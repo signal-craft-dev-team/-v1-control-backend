@@ -14,10 +14,13 @@ from app.presigned.storage import generate_upload_url, RAW_BUCKET
 from app.handler.file_upload import file_upload_handler
 from app.handler.upload_result import upload_result_handler
 
+import logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+
 # MQTT ROUTER
 router = Router()
 router.on(T.e2c("+", T.UPLOAD_REQUEST), file_upload_handler)
-router.on(T.c2e("+", T.UPLOAD_RESULT), upload_result_handler)
+router.on(T.e2c("+", T.UPLOAD_RESULT), upload_result_handler)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
