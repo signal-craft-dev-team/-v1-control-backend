@@ -1,6 +1,10 @@
 import asyncio
 from contextlib import asynccontextmanager
 
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
+
+from app.database.db import close_pool, get_pool
 from fastapi import FastAPI
 from signalcraft_models.mqtt import edge_cloud_topics as T
 # DB
