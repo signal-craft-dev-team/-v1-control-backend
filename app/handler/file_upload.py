@@ -3,6 +3,8 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 import aiomqtt
 from app.presigned.storage import generate_upload_url
+from app.database.db import get_pool
+from app.database.queries.edge_server import find
 from signalcraft_models.mqtt import edge_cloud_topics as T, edge_cloud_models as M
 
 KST = ZoneInfo("Asia/Seoul")

@@ -39,13 +39,3 @@ async def close_pool() -> None:
     if _pool is not None:
         await _pool.close()
         _pool = None
-
-
-
-{
-  "server_id": "test-server",
-  "round_ts": "2026-06-16T06:30:00Z",
-  "object_key": "test-server/20260616/20260616_153000_merged.wav",
-  "presigned_url": "",
-  "expires_at": "2026-06-16T07:41:51.484905+00:00"
-}
