@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 
-from app.db import close_pool, get_pool
+from app.database.db import close_pool, get_pool
 
 
 @asynccontextmanager
