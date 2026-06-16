@@ -7,9 +7,7 @@
 """
 import os
 import ssl
-
 import aiomqtt
-
 
 def make_client() -> aiomqtt.Client:
     return aiomqtt.Client(
