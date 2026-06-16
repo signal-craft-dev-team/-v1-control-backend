@@ -14,6 +14,9 @@ env:
   DB_NAME: signalcraft
   MQTT_HOST: mqtt.kr001.signalcraft.kr
   MQTT_PORT: '8883'
+  # 스토리지 정보
+  RAW_BUCKET: signalcraft-raw-audio
+  SLICE_BUCKET: signalcraft-sliced-audio
 jobs:
   # ─────────────────────────────────────────
   # 1. Docker 빌드 & GHCR 푸시
@@ -91,6 +94,7 @@ jobs:
               -e PGUSER="$DB_USER" -e PGPASSWORD="$DB_PASS" \
               -e MQTT_HOST=${{ env.MQTT_HOST }} -e MQTT_PORT=${{ env.MQTT_PORT }} \
               -e MQTT_USER="$MQTT_USER" -e MQTT_PASSWORD="$MQTT_PASS" \
+              -e RAW_BUCKET=${{ env.RAW_BUCKET }} -e SLICE_BUCKET=${{ env.SLICE_BUCKET }} \
               ${{ env.IMAGE_NAME }}:${{ github.ref_name }}
 
       - name: Smoke test (/health)
@@ -126,6 +130,7 @@ jobs:
                 -e PGUSER="$DB_USER" -e PGPASSWORD="$DB_PASS" \
                 -e MQTT_HOST=${{ env.MQTT_HOST }} -e MQTT_PORT=${{ env.MQTT_PORT }} \
                 -e MQTT_USER="$MQTT_USER" -e MQTT_PASSWORD="$MQTT_PASS" \
+                -e RAW_BUCKET=${{ env.RAW_BUCKET }} -e SLICE_BUCKET=${{ env.SLICE_BUCKET }} \
                 "$PREV"
             else
               echo "no previous image (first deploy) — nothing to roll back"
