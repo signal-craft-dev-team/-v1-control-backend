@@ -7,7 +7,6 @@
 """
 import os
 import ssl
-
 import aiomqtt
 
 try:
