@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 
 from app.db import close_pool, get_pool
-from app.mqtt_client import make_client
+from mqtt.client import make_client
 from app.storage import generate_upload_url, RAW_BUCKET
 
 
