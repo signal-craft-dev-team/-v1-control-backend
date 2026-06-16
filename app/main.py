@@ -12,10 +12,12 @@ from app.mqtt.service import serve
 from app.presigned.storage import generate_upload_url, RAW_BUCKET
 # HANDLER
 from app.handler.file_upload import file_upload_handler
+from app.handler.upload_result import upload_result_handler
 
 # MQTT ROUTER
 router = Router()
 router.on(T.e2c("+", T.UPLOAD_REQUEST), file_upload_handler)
+router.on(T.c2e("+", T.UPLOAD_RESULT), upload_result_handler)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
