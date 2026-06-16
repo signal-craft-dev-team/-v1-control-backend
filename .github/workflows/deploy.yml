@@ -12,7 +12,8 @@ env:
   DB_HOST: 10.178.0.3      # DB VM 내부 IP (VPC 내부 경로). 내부 DNS 이름도 가능
   DB_PORT: '5432'
   DB_NAME: signalcraft
-
+  MQTT_HOST: mqtt.kr001.signalcraft.kr
+  MQTT_PORT: '8883'
 jobs:
   # ─────────────────────────────────────────
   # 1. Docker 빌드 & GHCR 푸시
@@ -64,11 +65,13 @@ jobs:
         env:
           DB_USER: ${{ secrets.V1_GCP_VM_DB_CBE_USER }}
           DB_PASS: ${{ secrets.V1_GCP_VM_DB_CBE_PASSWORD }}
+          MQTT_USER: ${{ secrets.V1_GCP_MQTT_KR001_USER }}
+          MQTT_PASS: ${{ secrets.V1_GCP_MQTT_KR001_PASSWORD }}
         with:
           host: ${{ secrets.V1_GCP_VM_PROD_CONTROL_HOST }}
           username: ${{ secrets.V1_GCP_VM_PROD_CONTROL_USER }}
           key: ${{ secrets.V1_GCP_VM_SSH_KEY }}
-          envs: DB_USER,DB_PASS      # secret을 원격 셸 env로 안전 전달(인라인 보간 X)
+          envs: DB_USER,DB_PASS,MQTT_USER,MQTT_PASS     # secret을 원격 셸 env로 안전 전달(인라인 보간 X)
           script: |
             set -e
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
@@ -81,6 +84,8 @@ jobs:
               -p 8000:8000 \
               -e PGHOST=${{ env.DB_HOST }} -e PGPORT=${{ env.DB_PORT }} -e PGDATABASE=${{ env.DB_NAME }} \
               -e PGUSER="$DB_USER" -e PGPASSWORD="$DB_PASS" \
+              -e MQTT_HOST=${{ env.MQTT_HOST }} -e MQTT_PORT=${{ env.MQTT_PORT }} \
+              -e MQTT_USER="$MQTT_USER" -e MQTT_PASSWORD="$MQTT_PASS" \
               ${{ env.IMAGE_NAME }}:${{ github.ref_name }}
 
       - name: Smoke test (/health)
@@ -98,6 +103,8 @@ jobs:
         env:
           DB_USER: ${{ secrets.V1_GCP_VM_DB_CBE_USER }}
           DB_PASS: ${{ secrets.V1_GCP_VM_DB_CBE_PASSWORD }}
+          MQTT_USER: ${{ secrets.V1_GCP_MQTT_KR001_USER }}
+          MQTT_PASS: ${{ secrets.V1_GCP_MQTT_KR001_PASSWORD }}
         with:
           host: ${{ secrets.V1_GCP_VM_PROD_CONTROL_HOST }}
           username: ${{ secrets.V1_GCP_VM_PROD_CONTROL_USER }}
@@ -112,6 +119,8 @@ jobs:
                 -p 8000:8000 \
                 -e PGHOST=${{ env.DB_HOST }} -e PGPORT=${{ env.DB_PORT }} -e PGDATABASE=${{ env.DB_NAME }} \
                 -e PGUSER="$DB_USER" -e PGPASSWORD="$DB_PASS" \
+                -e MQTT_HOST=${{ env.MQTT_HOST }} -e MQTT_PORT=${{ env.MQTT_PORT }} \
+                -e MQTT_USER="$MQTT_USER" -e MQTT_PASSWORD="$MQTT_PASS" \
                 "$PREV"
             else
               echo "no previous image (first deploy) — nothing to roll back"
