@@ -1,0 +1,28 @@
+  name: CI (build check)
+
+  on:
+    pull_request:
+      branches: [main, integration, 'integration/**']
+    workflow_dispatch:
+
+  jobs:
+    build:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+        - uses: docker/setup-buildx-action@v3.10.0
+        - name: Build image (no push)
+          uses: docker/build-push-action@v6.15.0
+          with:
+            context: .
+            secrets: |
+              github_token=${{ secrets.MODEL_REPO_TOKEN }}
+            push: false
+            load: true
+            tags: control-backend:ci
+            cache-from: type=gha
+            cache-to: type=gha,mode=max
+                [ "$code" = "200" ] && echo "health OK" && exit 0
+                sleep 2
+                done
+                docker logs ci; echo "health FAILED"; exit 1
