@@ -4,4 +4,6 @@ google-cloud-storage>=2.0
 fastapi>=0.110
 uvicorn[standard]>=0.29
 pydantic>=2.6
+aiomqtt>=2.5.1
+tzdata>=2026.02
 signalcraft-models @ git+https://github.com/signal-craft-dev-team/signalcraft-models.git@main
