@@ -176,7 +176,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "${{ needs.deploy.result == 'success' && ':white_check_mark: *배포 성공*' || ':x: *배포 실패*' }}\n*서비스:* control-backend\n*브랜치:* `${{ github.ref_name }}`\n*작업자:* ${{ github.actor }}"
+                    "text": "${{ needs.deploy.result == 'success' && ':white_check_mark: *배포 성공*' || ':x: *배포 실패*' }}\n*서비스:* control-backend\n*태그:* `${{ github.ref_name }}`\n*작업자:* ${{ github.actor }}"
                   }
                 },
                 {
