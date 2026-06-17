@@ -40,7 +40,9 @@ async def register_initialized_edge(conn: asyncpg.Connection,
                                     hostname:str | None, 
                                     mac_address: str | None,
                                     installed_at: str | None = None) -> EdgeServer | None:
-    """hostname(UNIQUE) 기준 find-or-create. 기존 있으면 그 행 반환."""
+    """
+    hostname(UNIQUE) 기준 find-or-create. 기존 있으면 그 행 반환.
+    """
     row = await conn.fetchrow(
         """
         INSERT INTO edge_server (id, customer_id, place_id, hostname, mac_address, installed_at)
