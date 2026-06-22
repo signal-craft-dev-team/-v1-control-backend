@@ -22,13 +22,14 @@ async def find_server(req: EdgeServerRequest):
         async with pool.acquire() as conn:
             async with conn.transaction():
                 edge = await edge_server.find(conn, server_id=req.id)
+        if edge is None:
+            raise ValueError()
+        return Response(status_code=200, content=str(edge.id))
+    except ValueError:
+        log.warning("not find server id=%s", req.id)
+        raise HTTPException(status_code=404, detail="server not found")
     except Exception as e:
         # FK 위반(미존재 customer/place 등) 포함 — 검증 보강은 추후 TODO
-        log.exception("not find server id=%s", req.id)
+        log.exception("server error=%s", str(e))
         raise HTTPException(status_code=500, detail=f"register error: {e!s}")
-
-    log.info("find server_id=%s", edge.id)
-    edge = await edge_server.find(conn, server_id=req.id)
-    if edge is None:
-      raise HTTPException(status_code=404, detail="server not found")
-    return Response(status_code=200, content=str(edge.id))
+    
