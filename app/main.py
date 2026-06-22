@@ -14,6 +14,7 @@ from app.presigned.storage import generate_upload_url, RAW_BUCKET
 from app.handler.file_upload import file_upload_handler
 from app.handler.upload_result import upload_result_handler
 from app.handler.register import router as register_router
+from app.handler.find_device import router as find_router
 
 import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -33,7 +34,8 @@ async def lifespan(app: FastAPI):
         await close_pool()
 
 app = FastAPI(lifespan=lifespan)
-app.include_router(register_router)   # POST /register
+app.include_router(register_router)
+app.include_router(find_router)
 
 @app.get("/health")
 def health():

@@ -15,7 +15,6 @@ log = logging.getLogger("control_backend.handler.register")
 
 router = APIRouter()
 
-
 @router.post("/register", response_model=RegisterResult)
 async def register(req: RegisterRequest) -> RegisterResult:
     try:
