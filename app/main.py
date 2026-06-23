@@ -1,32 +1,24 @@
 import asyncio
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI
-from signalcraft_models.mqtt import edge_cloud_topics as T
 # DB
-from app.database.db import close_pool, get_pool
+from app.database.db import close_pool
 # MQTT
-from app.mqtt.router import Router
 from app.mqtt.service import serve
 # STORAGE
 from app.presigned.storage import generate_upload_url, RAW_BUCKET
 # HANDLER
-from app.handler.file_upload import file_upload_handler
-from app.handler.upload_result import upload_result_handler
+from app.handler import mqtt_router
 from app.handler.register import router as register_router
 from app.handler.find_device import router as find_router
 
-import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
-
-# MQTT ROUTER
-router = Router()
-router.on(T.e2c("+", T.UPLOAD_REQUEST), file_upload_handler)
-router.on(T.e2c("+", T.UPLOAD_RESULT), upload_result_handler)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    task = asyncio.create_task(serve(router))
+    task = asyncio.create_task(serve(mqtt_router))
     try:
         yield
     finally:
