@@ -1,24 +1,27 @@
+from datetime import datetime
 import logging
 import aiomqtt
 from signalcraft_models.mqtt import edge_cloud_models as M
 from app.database.db import get_pool
 
-log = logging.getLogger("control_backend.handler.heartbeat")
+log = logging.getLogger("[handler.HEARTBEAT]")
 
 async def server_heartbeat_handler(client: aiomqtt.Client, message: aiomqtt.Message) -> None:
     hb = M.ServerHeartbeat.model_validate_json(message.payload)
+    recorded_at = datetime.fromisoformat(hb.sent_at)
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute(
             """INSERT INTO server_heartbeats (id, server_id, recorded_at)
                 VALUES (gen_random_uuid(), $1::uuid, $2::timestamptz)""",
-            str(hb.server_id), hb.sent_at,
+            str(hb.server_id), recorded_at,
         )
-    log.debug("server heartbeat recorded server_id=%s", hb.server_id)
+    log.info("server heartbeat recorded server_id=%s", hb.server_id)
 
 
 async def sensor_heartbeat_handler(client: aiomqtt.Client, message: aiomqtt.Message) -> None:
     hb = M.SensorHeartbeat.model_validate_json(message.payload)
+    recorded_at = datetime.fromisoformat(hb.sent_at)
     pool = await get_pool()
     async with pool.acquire() as conn:
         # hardware_id로 edge_sensor UUID 조회
@@ -33,6 +36,6 @@ async def sensor_heartbeat_handler(client: aiomqtt.Client, message: aiomqtt.Mess
         await conn.execute(
             """INSERT INTO sensor_heartbeats (id, sensor_id, recorded_at)
                 VALUES (gen_random_uuid(), $1::uuid, $2::timestamptz)""",
-            str(row["id"]), hb.sent_at,
+            str(row["id"]), recorded_at,
         )
-    log.debug("sensor heartbeat recorded hardware_id=%s", hb.sensor_id)
+    log.info("sensor heartbeat recorded hardware_id=%s", hb.sensor_id)
