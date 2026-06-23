@@ -28,14 +28,14 @@ async def sensor_heartbeat_handler(client: aiomqtt.Client, message: aiomqtt.Mess
         row = await conn.fetchrow(
             """SELECT id FROM edge_sensor
                 WHERE hardware_id = $1 AND server_id = $2::uuid""",
-            hb.sensor_id, str(hb.server_id),
+            hb.sensor_hw_id, str(hb.server_id),
         )
         if row is None:
-            log.warning("sensor not found hardware_id=%s server_id=%s", hb.sensor_id, hb.server_id)
+            log.warning("sensor not found hardware_id=%s server_id=%s", hb.sensor_hw_id, hb.server_id)
             return
         await conn.execute(
             """INSERT INTO sensor_heartbeats (id, sensor_id, recorded_at)
                 VALUES (gen_random_uuid(), $1::uuid, $2::timestamptz)""",
             str(row["id"]), recorded_at,
         )
-    log.info("sensor heartbeat recorded hardware_id=%s", hb.sensor_id)
+    log.info("sensor heartbeat recorded hardware_id=%s", hb.sensor_hw_id)
