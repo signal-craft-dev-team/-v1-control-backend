@@ -25,11 +25,11 @@ async def insert(conn: asyncpg.Connection, rec: AudioRecording) -> None:
         INSERT INTO audio_recordings (
             id, customer_id, server_id, gcs_uri, format,
             sample_rate, bit_depth, duration_ms, channel_count,
-            status, file_size_bytes, query_params, captured_at
+            status, file_size_bytes, query_params, captured_at, sensor_id
         ) VALUES (
             $1, $2, $3, $4, $5,
             $6, $7, $8, $9,
-            $10::data_status, $11, $12::jsonb, $13
+            $10::data_status, $11, $12::jsonb, $13, $14
         )
         """,
         rec.id,
@@ -45,6 +45,7 @@ async def insert(conn: asyncpg.Connection, rec: AudioRecording) -> None:
         rec.file_size_bytes,
         json.dumps(rec.query_params),
         rec.captured_at,
+        rec.sensor_id,
     )
 
 

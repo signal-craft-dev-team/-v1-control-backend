@@ -20,7 +20,7 @@ from app.presigned.storage import RAW_BUCKET
 log = logging.getLogger("control_backend.handler.upload_result")
 
 
-async def upload_result_handler(client: aiomqtt.Client, message: aiomqtt.Message) -> None:
+async def file_upload_result_handler(client: aiomqtt.Client, message: aiomqtt.Message) -> None:
     res = M.UploadResult.model_validate_json(message.payload)
     gcs_uri = f"gs://{RAW_BUCKET}/{res.object_key}"
     status = DataStatus.done if res.status == "SUCCESS" else DataStatus.error
@@ -29,6 +29,12 @@ async def upload_result_handler(client: aiomqtt.Client, message: aiomqtt.Message
     async with pool.acquire() as conn:
         async with conn.transaction():
             tag = await audio_recordings.update(conn, gcs_uri, status)
+            if res.status == "SUCCESS":
+                await conn.execute(
+                    """UPDATE edge_sensor SET last_processed_file=$1
+                        WHERE hardware_id=$2 AND server_id=$3::uuid""",
+                    res.object_key, res.sensor_hw_id, res.server_id,
+                )
 
     if tag.rsplit(" ", 1)[-1] == "0":  # 'UPDATE 0' → 매칭 행 없음
         log.warning("no audio_recordings row for gcs_uri=%s (result without request?)", gcs_uri)

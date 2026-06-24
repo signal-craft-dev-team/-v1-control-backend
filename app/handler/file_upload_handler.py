@@ -29,23 +29,24 @@ log = logging.getLogger("control_backend.handler.upload")
 KST = ZoneInfo("Asia/Seoul")
 TTL = 15
 
-
-def _object_key(server_id: str, round_ts: str) -> str:
-    dt = datetime.fromisoformat(round_ts.replace("Z", "+00:00")).astimezone(KST)
-    return f"{server_id}/{dt:%Y%m%d}/{dt:%Y%m%d_%H%M%S}_merged.wav"
-
-
 async def file_upload_handler(client: aiomqtt.Client, message: aiomqtt.Message) -> None:
     req = M.UploadRequest.model_validate_json(message.payload)
-    object_key = _object_key(req.server_id, req.round_ts)
-    gcs_uri = f"gs://{RAW_BUCKET}/{object_key}"
-
+    gcs_uri = f"gs://{RAW_BUCKET}/{req.object_key}"
     pool = await get_pool()
+
     async with pool.acquire() as conn:
-        edge = await edge_server.find_by_info(conn, req.hostname, req.mac_address)
+        edge = await edge_server.find(conn, req.server_id)
         if edge is None:
             # 미등록 서버 → 기록 불가(customer_id NOT NULL). URL 발급하지 않고 종료.
-            log.error("unknown edge server: hostname=%s mac=%s", req.hostname, req.mac_address)
+            log.error("unknown edge server: data=%s", req.model_dump_json())
+            return
+        
+        sensor = await conn.fetchrow(                                # hardware_id → sensor_id
+            "SELECT id FROM edge_sensor WHERE hardware_id=$1 AND server_id=$2::uuid",
+            req.sensor_hw_id, req.server_id,
+        )
+        if sensor is None:
+            log.error("unknown sensor: hw_id=%s server=%s", req.sensor_hw_id, req.server_id)
             return
 
         rec = AudioRecording(
@@ -57,26 +58,26 @@ async def file_upload_handler(client: aiomqtt.Client, message: aiomqtt.Message) 
             sample_rate=req.sample_rate,
             bit_depth=req.bit_depth,
             duration_ms=req.duration_ms,
-            channel_count=req.channel_count,
+            channel_count=1,
             status=DataStatus.pending,
             file_size_bytes=req.file_size_bytes,
-            query_params={"sensor_order": req.sensor_order},
             captured_at=req.recorded_at,
             created_at=datetime.now(timezone.utc),  # 모델 필수(INSERT선 무시, DB now())
+            sensor_id=sensor["id"]
         )
         async with conn.transaction():
             await audio_recordings.insert(conn, rec)
 
     # 서명은 동기 네트워크 I/O → 이벤트 루프 보호 (DB 트랜잭션 밖)
-    url = await asyncio.to_thread(generate_upload_url, object_key, "audio/wav", TTL)
+    url = await asyncio.to_thread(generate_upload_url, req.object_key, "audio/wav", TTL)
     expires_at = (datetime.now(timezone.utc) + timedelta(minutes=TTL)).isoformat()
 
     resp = M.UploadUrl(
         server_id=req.server_id,                    # 라우팅 id 그대로 echo
-        round_ts=req.round_ts,
-        object_key=object_key,
+        round_ts=req.recorded_at,
+        object_key=req.object_key,
         presigned_url=url,
         expires_at=expires_at,
     )
     await client.publish(T.c2e(req.server_id, T.UPLOAD_URL), resp.model_dump_json(), qos=1)
-    log.info("issued presigned url server=%s key=%s", req.server_id, object_key)
+    log.info("issued presigned url server=%s key=%s", req.server_id, req.object_key)
