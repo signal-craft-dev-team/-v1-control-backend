@@ -28,6 +28,7 @@ async def param_request_handler(client: aiomqtt.Client, message: aiomqtt.Message
         active_hours_start=str(row.active_hours_start) if row.active_hours_start else None,
         active_hours_end=str(row.active_hours_end) if row.active_hours_end else None,
         sensor_captured_gap_ms=row.sensor_captured_gap_ms,
+        audio_config=row.audio_config
     )
     await client.publish(
         T.c2e(server_id, T.PARAM_RESULT),
