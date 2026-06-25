@@ -19,6 +19,7 @@ import aiomqtt
 from signalcraft_models.mqtt import edge_cloud_models as M
 from signalcraft_models.mqtt import edge_cloud_topics as T
 from signalcraft_models.pipeline import AudioRecording, DataStatus
+from signalcraft_models.timeutil import now_kst
 
 from app.database.db import get_pool
 from app.database.queries import audio_recordings, edge_server
@@ -63,7 +64,7 @@ async def file_upload_handler(client: aiomqtt.Client, message: aiomqtt.Message) 
             file_size_bytes=req.file_size_bytes,
             query_params={"round_ts": req.recorded_at},   # ← 추가
             captured_at=datetime.fromisoformat(req.recorded_at),
-            created_at=datetime.now(timezone.utc),  # 모델 필수(INSERT선 무시, DB now())
+            created_at=now_kst(),
             sensor_id=sensor["id"]
         )
         async with conn.transaction():
@@ -71,7 +72,7 @@ async def file_upload_handler(client: aiomqtt.Client, message: aiomqtt.Message) 
 
     # 서명은 동기 네트워크 I/O → 이벤트 루프 보호 (DB 트랜잭션 밖)
     url = await asyncio.to_thread(generate_upload_url, req.object_key, "audio/wav", TTL)
-    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=TTL)).isoformat()
+    expires_at=(now_kst() + timedelta(minutes=TTL)).isoformat(),
 
     resp = M.UploadUrl(
         server_id=req.server_id,                    # 라우팅 id 그대로 echo
