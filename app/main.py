@@ -1,6 +1,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 import logging
+from signalcraft_models.timeutil import KSTFormatter
 
 from fastapi import FastAPI
 # DB
@@ -14,7 +15,9 @@ from app.handler import mqtt_router
 from app.handler.register import router as register_router
 from app.handler.find_device import router as find_router
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+_handler = logging.StreamHandler()
+_handler.setFormatter(KSTFormatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+logging.basicConfig(level=logging.INFO, handlers=[_handler])
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
