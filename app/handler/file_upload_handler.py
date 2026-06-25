@@ -62,7 +62,7 @@ async def file_upload_handler(client: aiomqtt.Client, message: aiomqtt.Message) 
             status=DataStatus.pending,
             file_size_bytes=req.file_size_bytes,
             query_params={"round_ts": req.recorded_at},   # ← 추가
-            captured_at=req.recorded_at,
+            captured_at=datetime.fromisoformat(req.recorded_at),
             created_at=datetime.now(timezone.utc),  # 모델 필수(INSERT선 무시, DB now())
             sensor_id=sensor["id"]
         )
